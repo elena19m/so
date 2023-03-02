@@ -5,11 +5,13 @@ CFLAGS = -Wall -Wextra -Wno-unused-parameter -g
 
 build: all
 
-all: epoll-server server sendfile-server threaded-server
+all: epoll-server server sendfile-server threaded-server client
 
 epoll-server: epoll-server.o sock-util.o
 
 server: server.o sock-util.o
+
+client: client.o sock-util.o
 
 sendfile-server: sendfile-server.o sock-util.o
 
@@ -29,4 +31,4 @@ sock-util.o: sock-util.c sock-util.h debug.h util.h
 clean:
 	-rm -f *~
 	-rm -f *.o
-	-rm -f epoll-server server sendfile-server threaded-server
+	-rm -f epoll-server server sendfile-server threaded-server client
