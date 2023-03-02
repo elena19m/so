@@ -85,10 +85,7 @@ static int receive_filename(int s, char *buffer, size_t len)
 	if (n < 0)
 		valid = -1;
 	else {
-		if (buffer[n-1] != '\n')
-			valid = 0;
-		else
-			buffer[n-1] = '\0';
+		buffer[n-1] = '\0';
 	}
 
 	return valid;
@@ -144,7 +141,7 @@ int main(void)
 	while(1){
 		connectfd = accept_connection(listenfd);
 		valid = receive_filename(connectfd, fname, 256);
-		if (valid)
+		if (valid > 0)
 			serve_file(connectfd, fname);
 		close(connectfd);
 	}

@@ -157,40 +157,7 @@ static void receive_message(struct connection *conn)
 
 	conn->bytes_recv += bytes_recv;
 	conn->state = STATE_RECEIVE_DATA;
-	if (strchr(conn->filename, '\n') != NULL)
-		conn->state = STATE_FILENAME_RECEIVED;
-}
-
-/*
- * Receive filename.
- */
-
-static void receive_filename(struct connection *conn)
-{
-	int rc;
-
-	/* If error (STATE_CONNECTION_ERROR), remove connection. */
-	receive_message(conn);
-	if (conn->state == STATE_CONNECTION_ERROR)
-		goto error;
-
-	/* When filename is received, only accept out events. */
-	if (conn->state == STATE_FILENAME_RECEIVED) {
-		if (conn->filename[conn->bytes_recv-1] != '\n') {
-			fprintf(stderr, "No newline in filename.\n");
-			goto error;
-		}
-		conn->filename[conn->bytes_recv-1] = '\0';
-		rc = w_epoll_update_ptr_out(epollfd, conn->sockfd, conn);
-		if (rc < 0) {
-			ERR("w_epoll_add_ptr_out");
-			goto error;
-		}
-	}
-
-	return;
-error:
-	remove_connection(conn);
+	conn->state = STATE_FILENAME_RECEIVED;
 }
 
 static void open_file(struct connection *conn)
@@ -264,6 +231,7 @@ error:
 
 static void serve_file(struct connection *conn)
 {
+	dlog(LOG_DEBUG, "Server is sending file %s\n", conn->filename);
 	switch (conn->state) {
 	case STATE_FILENAME_RECEIVED:
 		open_file(conn);
@@ -294,6 +262,37 @@ error:
 	remove_connection(conn);
 }
 
+/*
+ * Receive filename.
+ */
+
+static void receive_filename(struct connection *conn)
+{
+	int rc;
+	char buff[2];
+
+	/* If error (STATE_CONNECTION_ERROR), remove connection. */
+	receive_message(conn);
+	if (conn->state == STATE_CONNECTION_ERROR)
+		goto error;
+
+	/* When filename is received, only accept out events. */
+	if (conn->state == STATE_FILENAME_RECEIVED) {
+		conn->filename[conn->bytes_recv-1] = '\0';
+		dlog(LOG_DEBUG, "Filename %s\n", conn->filename);
+		rc = w_epoll_update_ptr_out(epollfd, conn->sockfd, conn);
+		if (rc < 0) {
+			ERR("w_epoll_add_ptr_out");
+			goto error;
+		}
+	}
+
+	return;
+error:
+	remove_connection(conn);
+}
+
+
 int main(void)
 {
 	int rc;
@@ -318,6 +317,7 @@ int main(void)
 		/* Wait for events. */
 		rc = w_epoll_wait_infinite(epollfd, &rev);
 		DIE(rc < 0, "w_epoll_wait_infinite");
+		dlog(LOG_DEBUG, "Exit epoll_wait\n");
 
 		/*
 		 * Switch for event types; consider
@@ -336,6 +336,7 @@ int main(void)
 				receive_filename(rev.data.ptr);
 			}
 			if (rev.events & EPOLLOUT) {
+				dlog(LOG_DEBUG, "Send file\n");
 				serve_file(rev.data.ptr);
 			}
 		}

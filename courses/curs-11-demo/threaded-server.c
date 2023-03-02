@@ -126,10 +126,7 @@ static int receive_filename(int s, char *buffer, size_t len)
 	if (n < 0)
 		valid = -1;
 	else {
-		if (buffer[n-1] != '\n')
-			valid = 0;
-		else
-			buffer[n-1] = '\0';
+		buffer[n-1] = '\0';
 	}
 
 	return valid;
@@ -212,8 +209,8 @@ static void *thread_serve(void *arg)
 
 	while (1) {
 		sockfd = remove_from_bag();
-		valid = receive_filename(sockfd, fname, 9);
-		if (valid)
+		valid = receive_filename(sockfd, fname, 256);
+		if (valid > 0)
 			serve_file(sockfd, fname);
 		close(sockfd);
 	}

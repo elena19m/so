@@ -23,7 +23,7 @@
 #include "w_epoll.h"
 
 #define LISTEN_PORT		42424
-#define BUFSIZE			100000
+#define BUFSIZE			4096
 
 /*
  * "upgraded" read routine
@@ -112,18 +112,12 @@ static int receive_filename(int s, char *buffer, size_t len)
 	int valid = 1;
 
 	n = xrecv(s, buffer, len);
+
 	if (n < 0)
 		valid = -1;
 	else {
-		if (buffer[n-1] != '\n')
-			valid = 0;
-		else
-			buffer[n-1] = '\0';
+		buffer[n-1] = '\0';
 	}
-	if (valid)
-	  printf ("%s\n",buffer);
-	else
-	  printf("Got wrong fn\n");
 
 	return valid;
 }
@@ -183,8 +177,8 @@ int main(void)
 	/* server main loop */
 	while(1){
 		connectfd = accept_connection(listenfd);
-		valid = receive_filename(connectfd, fname, 9);
-		if (valid)
+		valid = receive_filename(connectfd, fname, 256);
+		if (valid > 0)
 			serve_file(connectfd, fname);
 		close(connectfd);
 	}
